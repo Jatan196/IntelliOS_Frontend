@@ -9,7 +9,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -17,7 +17,7 @@ function createWindow() {
 
   const startURL = isDev
     ? 'http://localhost:3000'
-    : `file://${path.join(__dirname, '../build/index.html')}`;
+    : `file://${path.join(__dirname, 'build/index.html')}`;
 
   win.loadURL(startURL);
 

@@ -125,13 +125,22 @@ const InstallerWizard = () => {
     autoBackup: false
   });
 
-  // ...existing InstallerWizard code...
+  const steps = [
+    'Welcome',
+    'Permissions',
+    'Initial Monitoring',
+    'Live Monitoring',
+    'Installation',
+    'Complete'
+  ];
+
+  const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+  const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 0));
 
   const handleLaunch = async () => {
-    // Using window.electron exposed from preload.js
-    if (window.electron) {
+    if (window.electron && window.electron.invoke) {
       try {
-        await window.electron.sendMessage('launch-app', preferences);
+        await window.electron.invoke('launch-app', preferences);
       } catch (error) {
         console.error('Failed to launch app:', error);
       }
@@ -140,7 +149,41 @@ const InstallerWizard = () => {
     }
   };
 
-  // ...existing render code...
+  const renderStep = () => {
+    const stepProps = {
+      onNext: handleNext,
+      onBack: handleBack,
+      preferences,
+      setPreferences,
+      onLaunch: handleLaunch
+    };
+
+    const stepComponents = [
+      <WelcomeScreen key="welcome" {...stepProps} />,
+      <PermissionsScreen key="permissions" {...stepProps} />,
+      <InitialMonitoringScreen key="initial" {...stepProps} />,
+      <LiveMonitoringScreen key="live" {...stepProps} />,
+      <InstallationProgressScreen key="install" {...stepProps} />,
+      <CompletionScreen key="complete" {...stepProps} />
+    ];
+
+    return stepComponents[currentStep];
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl">
+        <ProgressIndicator steps={steps} currentStep={currentStep} />
+        <div className="bg-white rounded-xl shadow-lg p-8 step-transition">
+          {renderStep()}
+        </div>
+        <div className="text-center mt-6 text-sm text-gray-500">
+          <p>IntelliOS Installer v1.0.0</p>
+          <p>© 2025 IntelliOS</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const App = () => {
