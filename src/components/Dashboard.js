@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { captureState, restoreState, getWorkspaces as apiGetWorkspaces } from '../api';
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { captureState, restoreState, getWorkspaces as apiGetWorkspaces } from "../api"
 import {
   Brain,
   Activity,
@@ -8,376 +8,664 @@ import {
   Clock,
   Zap,
   Play,
-  Edit3,
   FolderSync,
   Trash2,
   Plus,
-  Settings
-} from 'lucide-react';
+  Settings,
+  Search,
+  Bell,
+  User,
+  BarChart2,
+  Cloud,
+  Cpu,
+} from "lucide-react"
 
 const Dashboard = () => {
-  const [workspaces, setWorkspaces] = useState([]);
-  const [lastRestored, setLastRestored] = useState(null);
-  const [aiSuggestion, setAiSuggestion] = useState('');
-  const [username] = useState("Drashti");
-  const navigate = useNavigate();
+  const [workspaces, setWorkspaces] = useState([])
+  const [lastRestored, setLastRestored] = useState(null)
+  const [aiSuggestion, setAiSuggestion] = useState("")
+  const [username] = useState("Jay")
+  const navigate = useNavigate()
   const [preferences, setPreferences] = useState({
     cloudSync: true,
-    githubConnected: false
-  });
-  
-  // Fetch workspaces from backend
+    githubConnected: false,
+  })
+  const [systemStats] = useState({
+    cpu: 45,
+    memory: 62,
+    disk: 28,
+    network: 15,
+  })
+
   useEffect(() => {
     async function fetchWorkspaces() {
       try {
-        // Try backend endpoint, fall back to API wrapper
         const data = await apiGetWorkspaces()
-        setWorkspaces(data || []);
+        setWorkspaces(data || [])
 
-        // Set last restored from backend if exists
-        const last = data.find(ws => ws.lastRestored);
+        const last = data.find((ws) => ws.lastRestored)
         if (last) {
           setLastRestored({
             workspace: last.name,
             time: last.lastRestored,
             apps: last.apps?.length || 0,
             files: last.files || 0,
-            tabs: last.tabs || 0
-          });
+            tabs: last.tabs || 0,
+          })
         }
 
-        // Set AI suggestion from backend or default
-        setAiSuggestion("Based on your usage pattern, I recommend creating a 'Research Mode' workspace for your frequent article reading sessions.");
-
+        setAiSuggestion(
+          "Based on your usage pattern, I recommend creating a 'Research Mode' workspace for your frequent article reading sessions.",
+        )
       } catch (err) {
-        console.error("Error fetching workspaces:", err);
+        console.error("Error fetching workspaces:", err)
       }
     }
 
-    fetchWorkspaces();
-  }, []);
-  // Change this function
-const handleOpenPreferences = () => {
-  const api = window.electronAPI || window.electron
-  if (api && api.send) {
-    api.send('open-preferences')
-  } else {
-    console.warn('Electron API not available to open preferences')
+    fetchWorkspaces()
+  }, [])
+
+  const handleOpenPreferences = () => {
+    const api = window.electronAPI || window.electron
+    if (api && api.send) {
+      api.send("open-preferences")
+    } else {
+      console.warn("Electron API not available to open preferences")
+    }
   }
-};
-  // Handlers
+
   const handleRestoreWorkspace = async (workspace) => {
     try {
-      // If the backend supports workspace-level restore keep that; otherwise call generic restore endpoint
-      // Try workspace-level endpoint first
       let ok = false
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/workspaces/${workspace.id}/restore`, { method: 'POST' })
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/workspaces/${workspace.id}/restore`,
+          { method: "POST" },
+        )
         ok = res.ok
       } catch (e) {
         ok = false
       }
 
       if (!ok) {
-        // fallback to generic restore endpoint
         const r = await restoreState()
-        if (!r.ok) throw new Error('Restore failed')
+        if (!r.ok) throw new Error("Restore failed")
       }
       setLastRestored({
         workspace: workspace.name,
         time: new Date().toLocaleString(),
         apps: workspace.apps?.length || 0,
         files: workspace.files || 0,
-        tabs: workspace.tabs || 0
-      });
-      alert(`Workspace "${workspace.name}" restored!`);
+        tabs: workspace.tabs || 0,
+      })
+      alert(`Workspace "${workspace.name}" restored!`)
     } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Capture current system state via backend
-  const handleCaptureState = async () => {
-    try {
-      const res = await captureState()
-      if (res.ok) {
-        alert('State captured: ' + (res.data?.file_path || res.data?.message || 'OK'))
-      } else {
-        alert('Failed to capture state. See console for details.')
-        console.error('captureState failed', res)
-      }
-    } catch (e) {
-      console.error('captureState error', e)
-      alert('Error capturing state')
+      console.error(err)
     }
   }
 
-  const handleSyncWorkspace = async (workspaceId) => {
+  const handleCaptureState = async () => {
     try {
-      await fetch(`http://localhost:5000/api/workspaces/${workspaceId}/sync`, { method: 'PUT' });
-      setWorkspaces(prev => prev.map(ws => ws.id === workspaceId ? { ...ws, synced: true } : ws));
-    } catch (err) {
-      console.error(err);
+      const res = await fetch("http://localhost:8000/api/capture", { method: "POST" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Server responded with ${res.status}: ${errorText}`);
+      }
+      const data = await res.json();
+      alert("State captured: " + (data?.file_path || data?.message || "OK"));
+    } catch (e) {
+      console.error("captureState error:", e);
+      alert("Error capturing state: " + e.message);
     }
   };
+
+  const handleSyncWorkspace = async (workspaceId) => {
+    try {
+      await fetch(`http://localhost:5000/api/workspaces/${workspaceId}/sync`, { method: "PUT" })
+      setWorkspaces((prev) => prev.map((ws) => (ws.id === workspaceId ? { ...ws, synced: true } : ws)))
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleDeleteWorkspace = async (workspaceId) => {
     try {
-      await fetch(`http://localhost:5000/api/workspaces/${workspaceId}`, { method: 'DELETE' });
-      setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+      await fetch(`http://localhost:5000/api/workspaces/${workspaceId}`, { method: "DELETE" })
+      setWorkspaces((prev) => prev.filter((ws) => ws.id !== workspaceId))
     } catch (err) {
-      console.error(err);
+      console.error(err)
     }
-  };
+  }
 
   const handleCreateWorkspace = () => {
-    alert("Redirect to Create Workspace page or open modal");
-  };
+    alert("Redirect to Create Workspace page or open modal")
+  }
 
   const handleCustomizePreferences = () => {
-    alert("Redirect to Preferences page or open modal");
-  };
+    handleOpenPreferences()
+  }
 
   const handleSyncSettings = () => {
-    alert("Sync Settings clicked");
-  };
+    alert("Sync Settings clicked")
+  }
 
   const handleRealTimeMonitoring = () => {
-    // In Electron, you can use window.electronAPI.navigateToRealTimeMonitoring()
-    alert("Navigating to Real-Time Monitoring page...");
-  };
+    alert("Navigating to Real-Time Monitoring page...")
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-6">
-      {/* Top Bar */}
-      <div className="border-b border-slate-700/50 bg-black/20 backdrop-blur-sm mb-8 flex justify-between items-center px-6 py-4 rounded-xl">
-        <div className="flex items-center space-x-3">
-          <Brain className="w-8 h-8 text-purple-400" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Adaptive Workspace
-          </h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-slate-300">Welcome back, {username}</span>
-          <button
-            onClick={handleRealTimeMonitoring}
-            className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 px-4 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-cyan-500/25"
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        background: "linear-gradient(135deg, #0f172a 0%, #1a1a3e 50%, #0f172a 100%)",
+      }}
+    >
+      {/* Sidebar - Fixed */}
+      <div
+        style={{
+          width: "256px",
+          background: "linear-gradient(180deg, #1e293b 0%, #1a1f3a 100%)",
+          borderRight: "1px solid rgba(148, 163, 184, 0.1)",
+          display: "flex",
+          flexDirection: "column",
+          padding: "24px 16px",
+          overflowY: "auto",
+          flexShrink: 0,
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "32px",
+            paddingBottom: "24px",
+            borderBottom: "1px solid rgba(148, 163, 184, 0.1)",
+          }}
+        >
+          <Brain size={28} color="#3b82f6" />
+          <span
+            style={{
+              fontSize: "18px",
+              fontWeight: "600",
+              background: "linear-gradient(90deg, #3b82f6 0%, #a855f7 50%, #ec4899 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
           >
-            <Activity className="w-4 h-4" />
-            <span>Real-Time Monitoring</span>
-          </button>
+            IntelliOS
+          </span>
         </div>
+
+        {/* Navigation */}
+        <nav style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              cursor: "pointer",
+              color: "#f1f5f9",
+              fontSize: "14px",
+              fontWeight: "500",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+            }}
+          >
+            <Activity size={20} />
+            Dashboard
+          </div>
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              cursor: "pointer",
+              color: "#cbd5e1",
+              fontSize: "14px",
+              fontWeight: "500",
+              transition: "all 0.2s",
+            }}
+          >
+            <BarChart2 size={20} />
+            Monitoring
+          </div>
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              cursor: "pointer",
+              color: "#cbd5e1",
+              fontSize: "14px",
+              fontWeight: "500",
+              transition: "all 0.2s",
+            }}
+          >
+            <Settings size={20} />
+            Settings
+          </div>
+        </nav>
       </div>
-      <div className="min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <button
-            onClick={handleOpenPreferences}
-            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center space-x-2"
-          >
-            <span>⚙️</span>
-            <span>Change Customize Preferences</span>
-          </button>
-        </div>
-        <div className="bg-slate-800 rounded-xl p-6">
-          <h2 className="text-xl mb-4">Current Preferences</h2>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <span className={preferences.cloudSync ? "text-green-500" : "text-red-500"}>●</span>
-              <span>Cloud Sync: {preferences.cloudSync ? "Enabled" : "Disabled"}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className={preferences.githubConnected ? "text-green-500" : "text-red-500"}>●</span>
-              <span>GitHub: {preferences.githubConnected ? "Connected" : "Disconnected"}</span>
-            </div>
+
+      {/* Main Content */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "linear-gradient(135deg, #0f172a 0%, #1a1a3e 50%, #0f172a 100%)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Top Bar */}
+        <div
+          style={{
+            background: "linear-gradient(90deg, rgba(30, 41, 59, 0.8) 0%, rgba(26, 26, 62, 0.8) 100%)",
+            backdropFilter: "blur(10px)",
+            borderBottom: "1px solid rgba(148, 163, 184, 0.1)",
+            padding: "16px 24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
+            <Search size={20} color="#94a3b8" />
+            <input
+              type="text"
+              placeholder="Search workspaces..."
+              style={{
+                background: "rgba(51, 65, 85, 0.5)",
+                border: "1px solid rgba(148, 163, 184, 0.1)",
+                borderRadius: "6px",
+                padding: "8px 12px",
+                color: "#f1f5f9",
+                fontSize: "14px",
+                outline: "none",
+                width: "300px",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <Bell size={20} color="#94a3b8" style={{ cursor: "pointer" }} />
+            <User size={20} color="#94a3b8" style={{ cursor: "pointer" }} />
           </div>
         </div>
-      </div>
-    </div>
-      {/* Dashboard Overview */}
-      <div className="mb-8 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6 grid md:grid-cols-2 gap-6">
-        <div>
-          <h2 className="text-xl font-semibold mb-3 text-slate-200">Dashboard Overview</h2>
-          {lastRestored ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center space-x-2 text-green-400">
-                <CheckCircle className="w-4 h-4" />
-                <span>Last restored: {lastRestored.workspace}</span>
-              </div>
-              <div className="text-slate-400 ml-6">
-                {lastRestored.apps} apps • {lastRestored.files} files • {lastRestored.tabs} browser tabs
-              </div>
-              <div className="flex items-center space-x-2 text-slate-400 ml-6">
-                <Clock className="w-3 h-3" />
-                <span>{lastRestored.time}</span>
+
+        {/* Scrollable Content */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "24px",
+          }}
+        >
+          {/* Header */}
+          <div style={{ marginBottom: "32px" }}>
+            <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#f1f5f9", margin: "0 0 8px 0" }}>
+              Welcome back, {username}
+            </h1>
+            <p style={{ fontSize: "14px", color: "#94a3b8", margin: 0 }}>
+              Manage your workspaces and monitor system performance
+            </p>
+          </div>
+
+          {/* System Stats */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "16px",
+              marginBottom: "32px",
+            }}
+          >
+            {[
+              {
+                label: "CPU Usage",
+                value: systemStats.cpu,
+                icon: Cpu,
+                color: "#ef4444",
+                gradient: "linear-gradient(135deg, #ef4444 0%, #f97316 100%)",
+              },
+              {
+                label: "Memory",
+                value: systemStats.memory,
+                icon: Activity,
+                color: "#f59e0b",
+                gradient: "linear-gradient(135deg, #f59e0b 0%, #ec4899 100%)",
+              },
+              {
+                label: "Disk Space",
+                value: systemStats.disk,
+                icon: Cloud,
+                color: "#3b82f6",
+                gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)",
+              },
+              {
+                label: "Network",
+                value: systemStats.network,
+                icon: Zap,
+                color: "#10b981",
+                gradient: "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)",
+              },
+            ].map((stat, idx) => {
+              const Icon = stat.icon
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%)",
+                    border: "1px solid rgba(148, 163, 184, 0.1)",
+                    borderRadius: "8px",
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>{stat.label}</span>
+                    <Icon size={20} color={stat.color} />
+                  </div>
+                  <div style={{ fontSize: "24px", fontWeight: "700", color: "#f1f5f9" }}>{stat.value}%</div>
+                  <div
+                    style={{
+                      height: "4px",
+                      background: "rgba(51, 65, 85, 0.5)",
+                      borderRadius: "2px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${stat.value}%`,
+                        background: stat.gradient,
+                        borderRadius: "2px",
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Last Restored Section */}
+          {lastRestored && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)",
+                border: "1px solid rgba(16, 185, 129, 0.2)",
+                borderRadius: "8px",
+                padding: "20px",
+                marginBottom: "32px",
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+              }}
+            >
+              <CheckCircle size={24} color="#10b981" />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: "14px", fontWeight: "600", color: "#f1f5f9", margin: "0 0 4px 0" }}>
+                  Last Restored: {lastRestored.workspace}
+                </p>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                  {lastRestored.time} • {lastRestored.apps} apps • {lastRestored.files} files • {lastRestored.tabs} tabs
+                </p>
               </div>
             </div>
-          ) : (
-            <p className="text-slate-400">No workspace restored yet.</p>
           )}
-        </div>
 
-        {/* AI Suggestion */}
-        <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 rounded-lg p-4 border border-purple-500/20">
-          <div className="flex items-start space-x-3">
-            <Zap className="w-5 h-5 text-yellow-400 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-purple-300 mb-1">AI Suggestion</h3>
-              <p className="text-sm text-slate-300">{aiSuggestion}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Workspace Cards */}
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-200">Your Workspaces</h2>
-           
-          </div>
-
-          <div className="space-y-4">
-            {workspaces.length === 0 && <p className="text-slate-400">No workspaces found.</p>}
-
-            {workspaces.map((workspace) => (
-              <div
-                key={workspace.id}
-                className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6 hover:border-slate-600/50 transition-all duration-200"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-200">{workspace.name}</h3>
-                    <div className="flex items-center space-x-2 text-sm text-slate-400">
-                      <Clock className="w-3 h-3" />
-                      <span>Last used: {workspace.lastUsed}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {workspace.synced ? (
-                      <div className="flex items-center space-x-1 text-green-400">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-xs">Synced</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-1 text-orange-400">
-                        <AlertCircle className="w-4 h-4" />
-                        <span className="text-xs">Not Synced</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {workspace.apps?.map((app, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">
-                        {app}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="text-sm text-slate-400">
-                    {workspace.files || 0} files • {workspace.tabs || 0} browser tabs
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => handleRestoreWorkspace(workspace)}
-                    className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-3 py-2 rounded-lg transition-all duration-200 text-sm"
-                  >
-                    <Play className="w-4 h-4" />
-                    <span>Restore</span>
-                  </button>
-                  <button className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg transition-colors text-sm">
-                    <Edit3 className="w-4 h-4" />
-                    <span>Edit</span>
-                  </button>
-                  {!workspace.synced && (
-                    <button
-                      onClick={() => handleSyncWorkspace(workspace.id)}
-                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors text-sm"
-                    >
-                      <FolderSync className="w-4 h-4" />
-                      <span>Sync</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteWorkspace(workspace.id)}
-                    className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete</span>
-                  </button>
-                </div>
+          {/* AI Suggestion */}
+          {aiSuggestion && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                borderRadius: "8px",
+                padding: "20px",
+                marginBottom: "32px",
+                display: "flex",
+                gap: "16px",
+              }}
+            >
+              <Brain size={24} color="#3b82f6" style={{ flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: "600", color: "#f1f5f9", margin: "0 0 4px 0" }}>
+                  AI Suggestion
+                </p>
+                <p style={{ fontSize: "13px", color: "#cbd5e1", margin: 0 }}>{aiSuggestion}</p>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Right: Quick Actions + Stats */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6">
-            <h3 className="text-lg font-semibold text-slate-200 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
+          {/* Workspaces Section */}
+          <div style={{ marginBottom: "24px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <h2 style={{ fontSize: "18px", fontWeight: "700", color: "#f1f5f9", margin: 0 }}>Your Workspaces</h2>
               <button
                 onClick={handleCreateWorkspace}
-                className="w-full flex items-center space-x-3 bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-lg transition-colors text-left"
+                style={{
+                  background: "linear-gradient(135deg, #3b82f6 0%, #a855f7 50%, #ec4899 100%)",
+                  color: "#f1f5f9",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 16px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  transition: "all 0.2s",
+                }}
               >
-                <Plus className="w-5 h-5 text-purple-400" />
-                <span>Create New Workspace</span>
+                <Plus size={16} />
+                New Workspace
               </button>
-              <button
-                onClick={handleCustomizePreferences}
-                className="w-full flex items-center space-x-3 bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-lg transition-colors text-left"
-              >
-                <Settings className="w-5 h-5 text-blue-400" />
-                <span>Customize Preferences</span>
-              </button>
-              <button
-                onClick={handleSyncSettings}
-                className="w-full flex items-center space-x-3 bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-lg transition-colors text-left"
-              >
-                <FolderSync className="w-5 h-5 text-green-400" />
-                <span>Sync Settings</span>
-              </button>
+            </div>
+
+            {/* Workspaces Grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              {workspaces.map((workspace) => (
+                <div
+                  key={workspace.id}
+                  style={{
+                    background: "linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%)",
+                    border: "1px solid rgba(148, 163, 184, 0.1)",
+                    borderRadius: "8px",
+                    padding: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "16px",
+                  }}
+                >
+                  <div>
+                    <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#f1f5f9", margin: "0 0 4px 0" }}>
+                      {workspace.name}
+                    </h3>
+                    <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+                      {workspace.apps?.length || 0} apps • {workspace.files || 0} files
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      onClick={() => handleRestoreWorkspace(workspace)}
+                      style={{
+                        flex: 1,
+                        minWidth: "80px",
+                        background: "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)",
+                        color: "#f1f5f9",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Play size={14} />
+                      Restore
+                    </button>
+                    <button
+                      onClick={() => handleSyncWorkspace(workspace.id)}
+                      style={{
+                        flex: 1,
+                        minWidth: "80px",
+                        background: "rgba(51, 65, 85, 0.5)",
+                        color: "#f1f5f9",
+                        border: "1px solid rgba(148, 163, 184, 0.1)",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <FolderSync size={14} />
+                      Sync
+                    </button>
+                    <button
+                      onClick={() => handleDeleteWorkspace(workspace.id)}
+                      style={{
+                        flex: 1,
+                        minWidth: "80px",
+                        background: "rgba(51, 65, 85, 0.5)",
+                        color: "#f1f5f9",
+                        border: "1px solid rgba(148, 163, 184, 0.1)",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Stats Panel */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-cyan-500/10 rounded-xl border border-purple-500/20 p-6">
-            <h3 className="text-lg font-semibold text-slate-200 mb-4">Today's Activity</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Workspaces Used</span>
-                <span className="text-white">{workspaces.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Apps Launched</span>
-                <span className="text-white">
-                  {workspaces.reduce((sum, ws) => sum + (ws.apps?.length || 0), 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Files Opened</span>
-                <span className="text-white">
-                  {workspaces.reduce((sum, ws) => sum + (ws.files || 0), 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Browser Tabs</span>
-                <span className="text-white">
-                  {workspaces.reduce((sum, ws) => sum + (ws.tabs || 0), 0)}
-                </span>
-              </div>
-            </div>
+          {/* Quick Actions */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            <button
+              onClick={handleCaptureState}
+              style={{
+                background: "linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%)",
+                border: "1px solid rgba(148, 163, 184, 0.1)",
+                borderRadius: "8px",
+                padding: "16px",
+                color: "#f1f5f9",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                fontSize: "14px",
+                fontWeight: "600",
+                transition: "all 0.2s",
+              }}
+            >
+              <Clock size={20} />
+              Capture State
+            </button>
+            <button
+              onClick={handleCustomizePreferences}
+              style={{
+                background: "linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%)",
+                border: "1px solid rgba(148, 163, 184, 0.1)",
+                borderRadius: "8px",
+                padding: "16px",
+                color: "#f1f5f9",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                fontSize: "14px",
+                fontWeight: "600",
+                transition: "all 0.2s",
+              }}
+            >
+              <Settings size={20} />
+              Preferences
+            </button>
+            <button
+              onClick={handleRealTimeMonitoring}
+              style={{
+                background: "linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(51, 65, 85, 0.3) 100%)",
+                border: "1px solid rgba(148, 163, 184, 0.1)",
+                borderRadius: "8px",
+                padding: "16px",
+                color: "#f1f5f9",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                fontSize: "14px",
+                fontWeight: "600",
+                transition: "all 0.2s",
+              }}
+            >
+              <Activity size={20} />
+              Monitoring
+            </button>
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

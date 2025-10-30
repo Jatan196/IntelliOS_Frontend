@@ -76,7 +76,21 @@ export default function LoginPage() {
   };
 
   const handleOAuthLogin = async () => {
-    await simulateAuth();
+    setIsLoading(true);
+    setAuthStatus(null);
+
+    try {
+      // For now, always succeed with OAuth
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      setAuthStatus('success');
+      setTimeout(() => {
+        navigateToDashboard();
+      }, 500);
+    } catch (error) {
+      console.error('OAuth login failed:', error);
+      setAuthStatus('error');
+      setIsLoading(false);
+    }
   };
 
   const handleFormLogin = async () => {
@@ -84,7 +98,27 @@ export default function LoginPage() {
       return;
     }
 
-    await simulateAuth();
+    setIsLoading(true);
+    setAuthStatus(null);
+
+    try {
+      // Check for hardcoded admin credentials
+      if (formData.email.toLowerCase() === 'admin' && formData.password === 'password') {
+        setAuthStatus('success');
+        // Navigate to dashboard after a brief delay to show success state
+        setTimeout(() => {
+          navigateToDashboard();
+        }, 500);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+        setAuthStatus('error');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      setAuthStatus('error');
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field, value) => {
