@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Github, Cloud, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 //import { User, Lock } from "lucide-react";
 
@@ -47,14 +48,9 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Electron navigation after successful authentication
-  const navigateToDashboard = () => {
-    if (window.electronAPI && window.electronAPI.navigateToDashboard) {
-      window.electronAPI.navigateToDashboard();
-    } else {
-      console.warn('Electron API not found. Implement navigateToDashboard in preload.js');
-    }
-  };
+  // Use React Router for navigation in the renderer
+  const navigate = useNavigate();
+  const navigateToDashboard = () => navigate('/dashboard');
 
   const simulateAuth = async () => {
     setIsLoading(true);

@@ -21,10 +21,15 @@ function createWindow() {
 
   win.loadURL(startURL);
 
-  if (isDev) win.webContents.openDevTools();
-
-  // Retry if React not loaded (development only)
   if (isDev) {
+    win.webContents.openDevTools();
+    
+    // Add error logging
+    win.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      console.log('Renderer Console:', message);
+    });
+
+    // Retry if React not loaded
     win.webContents.on('did-fail-load', () => {
       console.log('Retrying to load React app...');
       setTimeout(() => win.loadURL('http://localhost:3000'), 2000);
@@ -51,7 +56,20 @@ app.on('activate', () => {
 // IPC Handlers
 ipcMain.handle('launch-app', async (event, preferences) => {
   console.log('Launching app with preferences:', preferences);
-  return true;
+  // Return success=true to indicate app should proceed to login
+  return { success: true, shouldLogin: true };
+});
+
+// Handle navigation requests from renderer
+ipcMain.handle('navigate-to', async (event, route) => {
+  console.log('Navigation requested to:', route);
+  if (win && !win.isDestroyed()) {
+    // Use loadURL with hash for spa navigation
+    const baseUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, 'build/index.html')}`;
+    await win.loadURL(`${baseUrl}#${route}`);
+    return { success: true };
+  }
+  return { success: false, error: 'Window not available' };
 });
 
 ipcMain.handle('create-workspace', async (event, workspace) => {
@@ -62,4 +80,20 @@ ipcMain.handle('create-workspace', async (event, workspace) => {
     console.error('Workspace creation failed:', error);
     return { success: false, error: error.message };
   }
+});
+
+// Add handlers for installation simulation and directory selection
+ipcMain.handle('simulate-installation', async (event, step) => {
+  console.log('Simulating installation step:', step);
+  // Simulate some work being done
+  await new Promise(resolve => setTimeout(resolve, 800));
+  return { success: true, step };
+});
+
+ipcMain.handle('select-directory', async (event) => {
+  const { dialog } = require('electron');
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  return result.filePaths[0];
 });

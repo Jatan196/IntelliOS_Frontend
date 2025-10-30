@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { captureState, restoreState, getWorkspaces as apiGetWorkspaces } from '../api';
 import {
   Brain,
   Activity,
@@ -29,9 +30,9 @@ const Dashboard = () => {
   useEffect(() => {
     async function fetchWorkspaces() {
       try {
-        const res = await fetch('http://localhost:5000/api/workspaces');
-        const data = await res.json();
-        setWorkspaces(data);
+        // Try backend endpoint, fall back to API wrapper
+        const data = await apiGetWorkspaces()
+        setWorkspaces(data || []);
 
         // Set last restored from backend if exists
         const last = data.find(ws => ws.lastRestored);
@@ -57,14 +58,31 @@ const Dashboard = () => {
   }, []);
   // Change this function
 const handleOpenPreferences = () => {
-  if (window.electron) {
-    window.electron.ipcRenderer.send('open-preferences');
+  const api = window.electronAPI || window.electron
+  if (api && api.send) {
+    api.send('open-preferences')
+  } else {
+    console.warn('Electron API not available to open preferences')
   }
 };
   // Handlers
   const handleRestoreWorkspace = async (workspace) => {
     try {
-      await fetch(`http://localhost:5000/api/workspaces/${workspace.id}/restore`, { method: 'POST' });
+      // If the backend supports workspace-level restore keep that; otherwise call generic restore endpoint
+      // Try workspace-level endpoint first
+      let ok = false
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/workspaces/${workspace.id}/restore`, { method: 'POST' })
+        ok = res.ok
+      } catch (e) {
+        ok = false
+      }
+
+      if (!ok) {
+        // fallback to generic restore endpoint
+        const r = await restoreState()
+        if (!r.ok) throw new Error('Restore failed')
+      }
       setLastRestored({
         workspace: workspace.name,
         time: new Date().toLocaleString(),
@@ -77,6 +95,22 @@ const handleOpenPreferences = () => {
       console.error(err);
     }
   };
+
+  // Capture current system state via backend
+  const handleCaptureState = async () => {
+    try {
+      const res = await captureState()
+      if (res.ok) {
+        alert('State captured: ' + (res.data?.file_path || res.data?.message || 'OK'))
+      } else {
+        alert('Failed to capture state. See console for details.')
+        console.error('captureState failed', res)
+      }
+    } catch (e) {
+      console.error('captureState error', e)
+      alert('Error capturing state')
+    }
+  }
 
   const handleSyncWorkspace = async (workspaceId) => {
     try {
