@@ -39,14 +39,21 @@ const CreateWorkspace = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (window.electron) {
+        // Prefer the preload-provided electronAPI; fallback to `electron` if available
+        const api = window.electronAPI || window.electron
+        if (api && api.invoke) {
             try {
-                await window.electron.ipcRenderer.invoke('create-workspace', workspace);
+                await api.invoke('create-workspace', workspace);
                 navigate('/dashboard');
+                return
             } catch (error) {
-                console.error('Failed to create workspace:', error);
+                console.error('Failed to create workspace via IPC:', error);
             }
         }
+
+        // Fallback: no electron IPC available (e.g., running in browser). For now navigate to dashboard.
+        console.warn('Electron IPC not available; CreateWorkspace will navigate without persisting.');
+        navigate('/dashboard');
     };
 
     return (

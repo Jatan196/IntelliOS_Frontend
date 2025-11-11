@@ -62,7 +62,6 @@ export async function getLogs() {
     return { ok: false, status: 0, data: null }
   }
 }
-
 export async function signup(data) {
   try {
     const r = await request('/api/auth/signup', {

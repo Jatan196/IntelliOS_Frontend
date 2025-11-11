@@ -3,16 +3,30 @@ import React, { useState, useEffect } from 'react';
 const CompletionScreen = ({ preferences, onLaunch }) => {
   const [installationSuccess] = useState(Math.random() > 0.1); // 90% success rate for demo
   const [showLaunchAnimation, setShowLaunchAnimation] = useState(false);
+  const [launchError, setLaunchError] = useState(null);
   
   useEffect(() => {
-    console.log('Installation completed with preferences:', preferences);
+    console.log('CompletionScreen mounted with preferences:', preferences);
   }, [preferences]);
 
-  const handleLaunchClick = () => {
+  const handleLaunchClick = async () => {
+    // Prevent multiple clicks
+    if (showLaunchAnimation) return;
+    
+    console.log('Launch button clicked');
     setShowLaunchAnimation(true);
-    setTimeout(() => {
-      onLaunch();
-    }, 1500);
+    setLaunchError(null);
+    
+    try {
+      console.log('Calling onLaunch');
+      await onLaunch();
+      // Force navigation after successful launch
+      window.location.href = '#/login';
+    } catch (error) {
+      console.error('Launch failed:', error);
+      setLaunchError('Failed to launch application. Please try again.');
+      setShowLaunchAnimation(false);
+    }
   };
 
   const getFeatureStatus = (key) => {
