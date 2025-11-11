@@ -62,3 +62,34 @@ export async function getLogs() {
     return { ok: false, status: 0, data: null }
   }
 }
+export async function signup(data) {
+  try {
+    const r = await request('/api/auth/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    })
+    return r
+  } catch (e) {
+    console.error('signup error', e)
+    return { ok: false, status: 0, data: null }
+  }
+}
+
+export async function login(data) {
+  try {
+    const r = await request('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    })
+    return r
+  } catch (e) {
+    console.error('login error', e)
+    return { ok: false, status: 0, data: null }
+  }
+}
